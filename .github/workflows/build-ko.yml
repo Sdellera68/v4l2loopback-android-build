@@ -11,34 +11,46 @@ jobs:
       CROSS_COMPILE: aarch64-linux-gnu-
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - name: Install cross toolchain
+      - name: Install toolchain & deps
         run: |
+          set -e
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu bc bison flex libncurses-dev
 
-      - name: Fetch kernel sources
+      - name: Fetch kernel source
         run: |
+          set -e
           git clone --depth=1 https://android.googlesource.com/kernel/common.git linux-stable
+          ls -l
           cd linux-stable
           make ARCH=${ARCH} defconfig
           cp .config ../kernel.config
+          cd ..
+          ls -l
 
       - name: Clone v4l2loopback
         run: |
+          set -e
           git clone --depth=1 https://github.com/umlaeute/v4l2loopback.git
+          ls -l
 
-      - name: Build v4l2loopback
+      - name: Build v4l2loopback module
         run: |
+          set -e
           cd v4l2loopback
+          ls -l
           make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} \
-            KDIR=../linux-stable \
+            KERNELDIR=../linux-stable \
             EXTRA_CFLAGS="-D__EXPORTED_HEADERS__" \
             modules
+          ls -l
 
-      - name: Upload artifact (.ko)
+      - name: Upload compiled .ko
         uses: actions/upload-artifact@v4
         with:
-          name: v4l2loopback-ko
+          name: v4l2loopback.ko
           path: v4l2loopback/v4l2loopback.ko
+
