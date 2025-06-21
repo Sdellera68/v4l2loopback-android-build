@@ -11,11 +11,9 @@ jobs:
       CROSS_COMPILE: aarch64-linux-gnu-
 
     steps:
-      # 1. Récupération du dépôt
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Installation du compilateur croisé et dépendances
       - name: Install cross-compilation toolchain
         run: |
           sudo apt-get update
@@ -24,46 +22,32 @@ jobs:
             bc \
             bison \
             flex \
-            libncurses-dev
+            libncurses-dev \
+            libssl-dev \
+            make
 
-      # 3. Récupération et configuration des sources du noyau Android
-      - name: Fetch Android common kernel sources
+      - name: Fetch Android kernel sources
         run: |
-          git clone --depth=1 \
-            https://android.googlesource.com/kernel/common.git linux-stable
+          git clone --depth=1 https://android.googlesource.com/kernel/common.git linux-stable
           cd linux-stable
           make ARCH=${ARCH} defconfig
-          cp .config ../kernel.config
+          make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} modules_prepare
           cd ..
 
-      # 4. Vérification rapide
-      - name: Verify kernel sources present
-        run: ls -lh
+      - name: Clone v4l2loopback
+        run: git clone --depth=1 https://github.com/umlaeute/v4l2loopback.git
 
-      # 5. Clonage du module v4l2loopback
-      - name: Clone v4l2loopback source
+      - name: Build v4l2loopback
         run: |
-          git clone --depth=1 https://github.com/umlaeute/v4l2loopback.git
-          ls -ld v4l2loopback
-
-      # 6. Compilation out-of-tree du module
-      - name: Build v4l2loopback kernel module (out-of-tree)
-        run: |
-          set -e
+          export KCFLAGS="-mno-stack-protector"
           cd v4l2loopback
-          echo "→ Source files in v4l2loopback:"
-          ls -1
-          echo "→ Running make out-of-tree..."
           make -C ../linux-stable M=$PWD \
             ARCH=${ARCH} \
             CROSS_COMPILE=${CROSS_COMPILE} \
             EXTRA_CFLAGS="-D__EXPORTED_HEADERS__" \
             modules -j$(nproc)
-          echo "→ Built module:"
-          ls -lh *.ko
 
-      # 7. Publication de l'artéfact .ko
-      - name: Upload compiled module artifact
+      - name: Upload compiled module
         uses: actions/upload-artifact@v4
         with:
           name: v4l2loopback-ko
