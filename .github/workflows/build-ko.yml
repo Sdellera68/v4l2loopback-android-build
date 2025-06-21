@@ -1,0 +1,44 @@
+name: Build v4l2loopback.ko
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      ARCH: arm64
+      CROSS_COMPILE: aarch64-linux-gnu-
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install cross toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu bc bison flex libncurses-dev
+
+      - name: Fetch kernel sources
+        run: |
+          git clone --depth=1 https://android.googlesource.com/kernel/common.git linux-stable
+          cd linux-stable
+          make ARCH=${ARCH} defconfig
+          cp .config ../kernel.config
+
+      - name: Clone v4l2loopback
+        run: |
+          git clone --depth=1 https://github.com/umlaeute/v4l2loopback.git
+
+      - name: Build v4l2loopback
+        run: |
+          cd v4l2loopback
+          make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} \
+            KDIR=../linux-stable \
+            EXTRA_CFLAGS="-D__EXPORTED_HEADERS__" \
+            modules
+
+      - name: Upload artifact (.ko)
+        uses: actions/upload-artifact@v3
+        with:
+          name: v4l2loopback-ko
+          path: v4l2loopback/v4l2loopback.ko
