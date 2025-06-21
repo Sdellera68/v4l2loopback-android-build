@@ -11,7 +11,7 @@ jobs:
       CROSS_COMPILE: aarch64-linux-gnu-
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install cross toolchain
         run: |
@@ -38,7 +38,7 @@ jobs:
             modules
 
       - name: Upload artifact (.ko)
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: v4l2loopback-ko
           path: v4l2loopback/v4l2loopback.ko
